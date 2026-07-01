@@ -5,10 +5,10 @@ import { useEffect, useState } from "react";
 import { Trash2, Search, Star } from "lucide-react";
 import toast from "react-hot-toast";
 
-export interface Review {
+interface Review {
   id: number;
   user: string;
-  user_id: number;
+  product: string;
   rating: number;
   comment: string;
   created_at: string;
