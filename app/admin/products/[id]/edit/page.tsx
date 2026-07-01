@@ -66,49 +66,74 @@ export default function EditProductPage() {
     }
   }, [id]);
 
-  async function handleSubmit(
-    e: React.FormEvent<HTMLFormElement>
-  ) {
-    e.preventDefault();
+async function handleSubmit(
+  e: React.FormEvent<HTMLFormElement>
+) {
+  e.preventDefault();
 
-    setSaving(true);
+  setSaving(true);
 
-    try {
-      const token = localStorage.getItem("token");
+  try {
+    const token = localStorage.getItem("token");
 
-      const formData = new FormData();
+    let imageUrl = preview;
 
-      formData.append("title", title);
-      formData.append("description", description);
+    // Upload new image if selected
+    if (image) {
+      const uploadForm = new FormData();
+      uploadForm.append("file", image);
 
-      if (image) {
-        formData.append("image", image);
-      }
-
-      const res = await fetch(
-        `https://review-project-backend.onrender.com/api/products/${id}`,
+      const uploadRes = await fetch(
+        "https://review-project-backend.onrender.com/api/upload/",
         {
-          method: "PUT",
+          method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          body: formData,
+          body: uploadForm,
         }
       );
 
-      if (!res.ok) {
-        throw new Error();
+      if (!uploadRes.ok) {
+        throw new Error("Image upload failed");
       }
 
-      toast.success("Product updated successfully!");
+      const uploadData = await uploadRes.json();
 
-      router.push("/admin/products");
-    } catch {
-      toast.error("Failed to update product.");
-    } finally {
-      setSaving(false);
+      imageUrl = uploadData.image_url;
     }
+
+    // Update product
+    const res = await fetch(
+      `https://review-project-backend.onrender.com/api/products/${id}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          image_url: imageUrl,
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.detail || "Failed to update product");
+    }
+
+    toast.success("Product updated successfully!");
+
+    router.push("/admin/products");
+  } catch (err: any) {
+    toast.error(err.message || "Failed to update product.");
+  } finally {
+    setSaving(false);
   }
+}
 
   if (loading) {
     return (
