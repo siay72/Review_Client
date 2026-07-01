@@ -25,65 +25,89 @@ export default function NewProductPage() {
 
   const [preview, setPreview] = useState("");
 
-  async function handleSubmit(
-    e: React.FormEvent<HTMLFormElement>
-  ) {
-    e.preventDefault();
+ async function handleSubmit(
+  e: React.FormEvent<HTMLFormElement>
+) {
+  e.preventDefault();
 
-    if (!title.trim()) {
-      toast.error("Product title is required.");
-      return;
-    }
-
-    if (!description.trim()) {
-      toast.error("Description is required.");
-      return;
-    }
-
-    if (!image) {
-      toast.error("Please select a product image.");
-      return;
-    }
-
-    setSaving(true);
-
-    try {
-      const token = localStorage.getItem("token");
-
-      const formData = new FormData();
-
-      formData.append("title", title);
-      formData.append("description", description);
-      formData.append("image", image);
-
-      const res = await fetch(
-        "https://review-project-backend.onrender.com/api/products/",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
-
-      if (!res.ok) {
-        const error = await res.json();
-
-        throw new Error(
-          error.detail || "Failed to create product."
-        );
-      }
-
-      toast.success("Product created successfully!");
-
-      router.push("/admin/products");
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setSaving(false);
-    }
+  if (!title.trim()) {
+    toast.error("Product title is required.");
+    return;
   }
+
+  if (!description.trim()) {
+    toast.error("Description is required.");
+    return;
+  }
+
+  if (!image) {
+    toast.error("Please select a product image.");
+    return;
+  }
+
+  setSaving(true);
+
+  try {
+    const token = localStorage.getItem("token");
+
+    // ==========================
+    // Upload Image to Cloudinary
+    // ==========================
+
+    const imageForm = new FormData();
+    imageForm.append("file", image);
+
+    const uploadRes = await fetch(
+      "https://review-project-backend.onrender.com/api/upload/",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: imageForm,
+      }
+    );
+
+    if (!uploadRes.ok) {
+      throw new Error("Image upload failed");
+    }
+
+    const uploadData = await uploadRes.json();
+
+    // ==========================
+    // Save Product
+    // ==========================
+
+    const productRes = await fetch(
+      "https://review-project-backend.onrender.com/api/products/",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          image_url: uploadData.image_url,
+        }),
+      }
+    );
+
+    if (!productRes.ok) {
+      const error = await productRes.json();
+      throw new Error(error.detail || "Failed to create product.");
+    }
+
+    toast.success("Product created successfully!");
+
+    router.push("/admin/products");
+  } catch (err: any) {
+    toast.error(err.message || "Something went wrong");
+  } finally {
+    setSaving(false);
+  }
+}
 
   return (
     <div className="mx-auto max-w-5xl p-4 md:p-8">
